@@ -23,6 +23,7 @@ wget https://www.hcup-us.ahrq.gov/toolssoftware/chronic/cci2015.csv
 cd ..
 ```
 and change `use_cci = False` to `use_cci = True` in `info/IcdInfo.py`.
+
 7. Done. Try training your model!
 
 
