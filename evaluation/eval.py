@@ -22,7 +22,7 @@ import pandas as pd
 from mlxtend.preprocessing import TransactionEncoder
 from mlxtend.frequent_patterns import fpmax
 from sklearn.decomposition import PCA
-from sklearn.metrics import classification_report
+from sklearn.metrics import classification_report, roc_auc_score
 from tabulate import tabulate
 
 # NN
@@ -178,16 +178,16 @@ class Evaluation:
                         error_mape_by_label[item_label].append(error_mape)
 
                 # Save reconstruction error for this admission (mean over all of its time steps)
-                adm_ts_count = 0
-                adm_ts_err = 0
-                for ts_len, ts_err in adm_rec_errors:
-                    adm_ts_count += ts_len  # total number of time steps
-                    adm_ts_err += ts_err * ts_len  # total error (not mean)
-                if adm_ts_count > 0:
-                    adm_err = adm_ts_err / adm_ts_count
+                adm_obs_count = 0
+                adm_obs_err = 0
+                for obs_len, ts_err in adm_rec_errors:
+                    adm_obs_count += obs_len  # total number of observations
+                    adm_obs_err += ts_err * obs_len  # total error (not mean)
+                if adm_obs_count > 0:
+                    adm_err = adm_obs_err / adm_obs_count  # a mean over all observations of this admission
                     rec_errors.append(float(adm_err))
                     adms_evaluated.append(int(adm_idx))
-                    lengths.append(adm_ts_count)
+                    lengths.append(adm_obs_count)  # total number of observations for this admission
 
             # Cache the result of the evaluation
             self._eval_result = {
@@ -264,6 +264,27 @@ class Evaluation:
 
         logging.info("Testing prediction power of feature space ...")
 
+        # Train classifier to predict mortality from feature space
+
+        # Find out ages and survival of admissions and convert to one-hot
+        static_info = self.preprocessor.extract_static_medical_data(
+            adm_indices=self.trainer.get_split_indices(self.split)
+        )
+        admission_survived = np.array(static_info['FUTURE_survival'])  # True if alive, False if dead
+
+        # Create training data to fit model for predicting mortality from features
+        survival_target = to_categorical(admission_survived.astype(int))  # shape: (num_adm, 2)
+
+        bottleneck_info['mortality_prediction_model'] = self._train_feature_space_classifier(
+            features=features,
+            target_arr=survival_target,
+            class_labels={
+                0: 'deceased',
+                1: 'survived'
+            },
+            multi_label=False
+        )
+
         # Train classifier for diagnosis category prediction
         _, static_categorical = self.preprocessor.get_scaled_static_data_array()
         icd_attrs = [attr for attr in self.preprocessor.get_static_attrs_listlike() if "icd" in attr.lower()]
@@ -298,31 +319,9 @@ class Evaluation:
                 multi_label=True
             )
 
-        # Train classifier to predict mortality from feature space
-
-        # Find out ages and survival of admissions and convert to one-hot
-        static_info = self.preprocessor.extract_static_medical_data(
-            adm_indices=self.trainer.get_split_indices(self.split)
-        )
-        admission_survived = np.array(static_info['FUTURE_survival'])  # True if alive, False if dead
-
-        # Create training data to fit model for predicting mortality from features
-        survival_target = to_categorical(admission_survived.astype(int))  # shape: (num_adm, 2)
-
-        bottleneck_info['mortality_prediction_model'] = self._train_feature_space_classifier(
-            features=features,
-            target_arr=survival_target,
-            class_labels={
-                0: 'deceased',
-                1: 'survived'
-            },
-            multi_label=False
-        )
-
         return bottleneck_info
 
-    @staticmethod
-    def _train_feature_space_classifier(features, target_arr, class_labels, multi_label) -> Dict:
+    def _train_feature_space_classifier(self, features, target_arr, class_labels, multi_label) -> Dict:
         # Count classes (they might be imbalanced)
         class_counts = np.sum(target_arr, axis=0).astype(int)
         num_classes = len(class_counts)
@@ -363,12 +362,40 @@ class Evaluation:
             metrics=['accuracy']
         )
 
+        # Split into training and validation data (according to the split we also use for the main model)
+        if self.split != io.split_name_all:
+            return {
+                "result": None,
+                "explanation": "This can only be perform the 'all' split since it requires validation and training"
+                               " data and uses the same split as the main model."
+            }
+
+        # Get official split indices
+        all_split = self.trainer.get_split_indices(io.split_name_all)
+        val_split = self.trainer.get_split_indices(io.split_name_val)
+        train_split = self.trainer.get_split_indices(io.split_name_train)
+
+        # The features we have are ordered with respect to the all_split split. Split them into two arrays according
+        # to the validation and training splits WITHIN the all_split split.
+        val_indices = self.clustering.index_multi(all_split, val_split)
+        train_indices = self.clustering.index_multi(all_split, train_split)
+
+        # Split features
+        features_train = features[train_indices, :]
+        features_val = features[val_indices, :]
+        del features
+
+        # Split targets
+        targets_train = target_arr[train_indices, :]
+        targets_val = target_arr[val_indices, :]
+        del target_arr
+
         # Fit model to data
         val_split = 0.2
         model_hist = classifier_model.fit(
-            x=features,
-            y=target_arr,
-            validation_split=val_split,
+            x=features_train,
+            y=targets_train,
+            validation_data=(features_val, targets_val),
             epochs=500000,
             callbacks=[
                 EarlyStopping(patience=500, restore_best_weights=True)
@@ -376,18 +403,29 @@ class Evaluation:
             class_weight=class_weights
         )
 
-        # Generate accuracy report about model
+        # Generate accuracy report about model (on validation data)
         if not multi_label:
-            y_pred = np.argmax(classifier_model.predict(features), axis=-1)  # take argmax of prediction
-            y_ground_truth = np.argmax(target_arr, axis=-1)
+            y_pred_raw = classifier_model.predict(features_val)
+
+            # Generate accuracy report
+            y_pred = np.argmax(y_pred_raw, axis=-1)  # take argmax of prediction
+            y_ground_truth = np.argmax(targets_val, axis=-1)
             acc_report = classification_report(
                 y_ground_truth,
                 y_pred,
                 output_dict=True
             )
+
+            # Calculate ROC AUC
+            y_pred_score = y_pred_raw[:, 1]  # probability of predicting a 1
+            try:
+                acc_report['roc_auc'] = roc_auc_score(y_ground_truth, y_pred_score)
+            except ValueError:
+                pass  # this happens if by chance, the target values all belong to one class
+
         else:
-            y_pred = np.round(classifier_model.predict(features))  # round prediction
-            y_ground_truth = target_arr
+            y_pred = np.round(classifier_model.predict(features_val))  # round prediction
+            y_ground_truth = targets_val
 
             acc_report = {}
             for class_idx in range(num_classes):

@@ -38,7 +38,7 @@ def positional_encoding_calculation(times_unnormalized: np.ndarray, pos_enc_dims
     for dim in range(pos_enc_dims):
         # Each dimension has its own frequency factor (here, we calculate the reciprocal of it)
         k = (dim - (dim % 2)) // 2
-        omega = np.power(max_time, 2 * k / (pos_enc_dims - 2))
+        omega = np.power(max_time, 2 * k / (pos_enc_dims - 2))  # (-2 because of the way I generate the k)
 
         # Use sine and cosine alternately (starting with sine)
         f = funcs[dim % 2]
