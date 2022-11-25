@@ -4112,7 +4112,7 @@ class Plotting:
         # Give the top axis a title
         title = f"{item_label}"
         if analysis_mode:
-            title += " (ID {col_name})\n"
+            title += f" (ID {col_name})\n"
         if single_admission_mode:
             if analysis_mode:
                 title += f"Admission Index {adm_indices[0]}"
@@ -4149,7 +4149,8 @@ class Plotting:
         plot_dir = "reconstructions"
         plot_name = f"time_series_gt_vs_recon_attr_{io.sanitize(item_label)}"
         if single_admission_mode:
-            plot_name += f"_adm_{adm_indices[0]}_{len(ground_truths[0])}"
+            hadm_id = self.preprocessor.get_hadm_id(adm_indices[0])
+            plot_name += f"_hadmId_{hadm_id}_{len(ground_truths[0])}"
         else:
             plot_dir += "_multi"
             plot_name += f"_multi_{num_adms}_admissions"
@@ -4175,6 +4176,24 @@ class Plotting:
 
         self._save_plot(os.path.join(plot_dir, plot_name),
                         create_dirs=True)
+
+        # Save a file that contains all information necessary for plotting - this can later be used to e.g. plot
+        # reconstructions from different runs together
+        save_plot_info_files = False
+        if save_plot_info_files and single_admission_mode:
+            plot_info = {
+                't_range': t_range,
+                'gt_values': gt_values,
+                'reco': reco,
+                'time_axis_labeling': time_axis_labeling,
+                'item_label': item_label,
+                'hadm_id': hadm_id
+            }
+            plot_info_path = self._get_plot_path(os.path.join(plot_dir,
+                                                              f"info_hadmId_{hadm_id}_{io.sanitize(item_label)}"),
+                                                 rel_dirs=True)
+            plot_info_path = os.path.splitext(plot_info_path)[0] + ".pkl"
+            io.write_pickle(plot_info, plot_info_path)
 
     @staticmethod
     def _sort_legend_by_label(ax):

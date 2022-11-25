@@ -15,7 +15,7 @@ pip install -r requirements.txt
 4. Get access to [MIMIC-III](https://mimic.mit.edu/docs/gettingstarted/).
 5. Set the environment variable `MIMIC_URL` to the URL of a MIMIC-III database (local or remote).
 6. (Optional) If you want to use the
-[HCUP Chronic Condition Indicator](https://www.hcup-us.ahrq.gov/toolssoftware/chronic/chronic.jsp), download the CSV 
+[HCUP Chronic Condition Indicator](https://www.hcup-us.ahrq.gov/toolssoftware/chronic/chronic.jsp), download the CSV
 file into the correct directory:
 ```bash
 cd info
@@ -48,7 +48,7 @@ training for at most 25 epochs:
 python full_pipeline_mimic.py --admissions 20000 --max_epochs 25
 ```
 
-Preprocessing, training or model hyperparameters can be set directly when executing on the command 
+Preprocessing, training or model hyperparameters can be set directly when executing on the command
 line using the `prep`, `training`, and `model` prefixes followed by the name of the hyperparameter, e.g.:
 ```bash
 python full_pipeline_mimic.py --prep_scaling_mode standard --training_batch_size 12 --model_rnn_size 150
@@ -61,7 +61,7 @@ The search script needs to be run from its own directory:
 cd search
 ```
 
-Using arguments, one can define a common prefix for search runs, the number of runs, and the number of admissions 
+Using arguments, one can define a common prefix for search runs, the number of runs, and the number of admissions
 to train and evaluate on:
 ```bash
 python cluster_search.py --bout_id my_random_search --admissions 10000 --runs 50
@@ -81,4 +81,4 @@ The search can also be run sequentially on a single computer by setting the `--i
 ## Credit
 - **Paper**: Kilian Merkelbach, Steffen Schaper, Christian Diedrich, Sebastian Johannes Fritsch, Andreas Schuppert
 - **Training, Model, Clustering, Evaluation, Search**: Kilian Merkelbach
-- **Data Extraction Pipeline**: Richard Polzin, Konstantin Sharafutdinov and Jayesh Bhat, Kilian Merkelbach
+- **Data Extraction Pipeline**: Richard Polzin, Konstantin Sharafutdinov, Jayesh Bhat, Kilian Merkelbach
