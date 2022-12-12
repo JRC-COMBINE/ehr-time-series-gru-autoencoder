@@ -107,6 +107,10 @@ class Evaluation:
             )
             logging.info(f"Validating on {len(adm_indices)} {self.split} examples.")
 
+            # Save variance of each time series - we later use this to calculate statistics of variance for each
+            # dynamic data attribute
+            dyn_variances = defaultdict(list)
+
             # For each sample of val data, get reconstruction loss
             losses = []
             rec_errors = []
@@ -177,6 +181,9 @@ class Evaluation:
                     if error_mape is not None:
                         error_mape_by_label[item_label].append(error_mape)
 
+                    # Save variance of this time series
+                    dyn_variances[item_label].append(np.var(attr_gt))
+
                 # Save reconstruction error for this admission (mean over all of its time steps)
                 adm_obs_count = 0
                 adm_obs_err = 0
@@ -189,8 +196,21 @@ class Evaluation:
                     adms_evaluated.append(int(adm_idx))
                     lengths.append(adm_obs_count)  # total number of observations for this admission
 
+            # Save variance statistics for all dynamic data attributes
+            dyn_variance_stats = {k:
+                                      {
+                                          'mean': np.mean(v),
+                                          'median': np.median(v),
+                                          'min': np.min(v),
+                                          'max': np.max(v),
+                                          'p25': np.percentile(v, 25),
+                                          'p75': np.percentile(v, 75)
+                                      }
+                for (k, v) in dyn_variances.items()}
+
             # Cache the result of the evaluation
             self._eval_result = {
+                'dyn_variance_stats': dyn_variance_stats,
                 'losses': losses,
                 'adm_rec_errors': rec_errors,
                 'adms_evaluated': adms_evaluated,

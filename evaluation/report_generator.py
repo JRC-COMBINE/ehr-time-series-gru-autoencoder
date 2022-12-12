@@ -115,6 +115,24 @@ class EvalReportGen:
                 'aggregation_over_admissions': full_rep(adm_errors)
             })
 
+            # Add error aggregates for dynamic data classes
+            dyn_attr_errors = {k: np.array(v) for (k, v) in eval_raw['_eval_result_raw']['rec_error_scores'].items()}
+            dyn_attr_var_stats = eval_raw['_eval_result_raw']['dyn_variance_stats']
+            dyn_attr_keys = set(dyn_attr_errors.keys())
+            assert dyn_attr_keys == set(dyn_attr_var_stats.keys()),\
+                "rec_error_scores keys are different from dyn_variance_stats keys!"
+
+            dyn_err_report = {}
+            for dyn_attr_name in dyn_attr_keys:
+                ts_errors = dyn_attr_errors[dyn_attr_name]
+                var_stats = dyn_attr_var_stats[dyn_attr_name]
+                dyn_err_report[dyn_attr_name] = {
+                    'err_median': float(np.median(ts_errors)),
+                    'var_median': float(var_stats['median']),
+                    'err_div_var': float(np.median(ts_errors) / var_stats['median'])
+                }
+            reports[p]['agg_dyn_attrs'] = dyn_err_report
+
             # Add some other values into the report
             reports[p]['rec_error_median_overall_weighted_MAPE'] = eval_raw['rec_error_median_overall_weighted_MAPE']
 
