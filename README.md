@@ -35,7 +35,11 @@ Display the command line help using:
 python full_pipeline_mimic.py --help
 ```
 
-### Full Pipeline (Training, Clustering, Evaluation)
+### Demo on Generic Files
+
+A full example of using the software for feature extraction on generic CSV files with time series is available in `generic_dataframe_demo.py`.
+
+### Full Pipeline (Training, Clustering, Evaluation) on MIMIC
 
 Using default settings:
 ```bash
