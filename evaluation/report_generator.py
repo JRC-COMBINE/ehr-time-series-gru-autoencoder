@@ -10,6 +10,9 @@ import itertools
 # Math and data
 import numpy as np
 import humanfriendly as hf
+from tabulate import tabulate
+from scipy.stats import percentileofscore
+from scipy.stats import pearsonr
 
 # My own modules
 sys.path.append("..")
@@ -43,6 +46,7 @@ class EvalReportGen:
         logging.info(f"Generating report for {len(paths)} eval files ... ")
 
         reports = {}
+        all_err_by_rep = {}
         for p in paths:
             # Open file
             eval_raw = io.read_json(p)
@@ -62,6 +66,7 @@ class EvalReportGen:
 
             # Get array that contains error values for all time series
             all_err = np.array(sum(eval_raw['_eval_result_raw']['rec_error_scores'].values(), []))
+            all_err_by_rep[p] = all_err
 
             # Get array of errors for admissions - each admission contributes the mean error over all of its time steps
             adm_errors = np.array(eval_raw['_eval_result_raw']['adm_rec_errors'])
@@ -129,7 +134,7 @@ class EvalReportGen:
                 dyn_err_report[dyn_attr_name] = {
                     'err_median': float(np.median(ts_errors)),
                     'var_median': float(var_stats['median']),
-                    'err_div_var': float(np.median(ts_errors) / var_stats['median'])
+                    'var_mean': float(var_stats['mean'])
                 }
             reports[p]['agg_dyn_attrs'] = dyn_err_report
 
@@ -141,8 +146,79 @@ class EvalReportGen:
                                        for (k, v) in reports.items()]))
 
         # Have user examine report interactively
-        pass  # (set a breakpoint here!)
+        pass  # (set a breakpoint here to do that!)
 
+        # Generate a latex table that is ready to be put into a publication
+        with_percentiles = True
+        for rep_key, rep_val in reports.items():
+            print(f"Dynamic class error table for {rep_key}:")
+
+            # Convert from dictionary of dicts to list of dicts
+            err_rep = rep_val['agg_dyn_attrs']
+            dyn_stats = [dict(v, name=k) for (k, v) in err_rep.items()]
+
+            # Generate table rows
+            table_rows = []
+            all_err_retrieved = all_err_by_rep[rep_key]
+            var_and_err = []
+            for d in dyn_stats:
+
+                median_err = d['err_median']
+                variance = d['var_median']
+                row = [
+                    d['name'],
+                    median_err,
+                    d['var_median']
+                ]
+
+                # Add error divided by variance
+                if variance != 0:
+                    row.append(median_err / variance)
+                else:
+                    row.append(float('Inf'))
+
+                # Save variance and error in order to calculate the Pearson correlation coefficient later
+                var_and_err.append((variance, median_err))
+
+                # Add percentile
+                if with_percentiles:
+                    row.append(percentileofscore(all_err_retrieved, median_err))
+
+                table_rows.append(row)
+
+            # Sort rows
+            table_rows.sort(key=lambda r: r[1])  # sort by mse
+
+            # Make table
+            dummy_label = "DummyLabelErrDivVar"
+            headers = ["Class Name", "MSE", "Variance", dummy_label]
+            if with_percentiles:
+                headers.append("Percentile")
+            table = tabulate(
+                table_rows,
+                headers=headers,
+                floatfmt=".4f",
+                tablefmt="latex_longtable"
+            )
+            table_str = str(table)
+
+            # Put in proper latex column label
+            table_str = table_str.replace(dummy_label, "$\\frac{\\text{MSE}}{\\text{Variance}}$")
+
+            # Replace inf by latex explanation
+            table_str = table_str.replace(" inf ", " \\textit{undefined} ")
+
+            print()
+            print(table_str)
+            print()
+
+            # Determine Pearson correlation coefficient between variance and error
+            var_and_err = np.array(var_and_err)
+            variances = var_and_err[:, 0]
+            errors = var_and_err[:, 1]
+            pearson_r, pearson_p = pearsonr(variances, errors)
+            print(f"Variances and errors are correlated with Pearson correlation coefficient of {pearson_r:0.4f}"
+                  f" (p = {pearson_p})")
 
 if __name__ == "__main__":
     e = EvalReportGen()
