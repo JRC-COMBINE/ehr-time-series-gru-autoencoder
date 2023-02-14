@@ -58,6 +58,8 @@ line using the `prep`, `training`, and `model` prefixes followed by the name of 
 python full_pipeline_mimic.py --prep_scaling_mode standard --training_batch_size 12 --model_rnn_size 150
 ```
 
+Using the script `run_full_published.sh`, you can run the pipeline with the same settings as used in the publication.
+
 ### Random Architecture Search
 Search can be run either locally or on a [SLURM](https://slurm.schedmd.com/documentation.html)-based compute cluster.
 The search script needs to be run from its own directory:
