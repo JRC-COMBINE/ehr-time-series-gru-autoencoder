@@ -1,6 +1,6 @@
 # Novel architecture for gated recurrent unit autoencoder trained on time series from electronic health records enables detection of ICU patient subgroups
 <!-- TODO: Link paper right here (at the top) once it's done -->
-<!-- TODO: Add a nice-looking cluster plot here, if one is available -->
+<!-- TODO: Add a nice-looking cluster plot here, if one is available  -->
 
 ## Installation
 1. Clone this repository:
