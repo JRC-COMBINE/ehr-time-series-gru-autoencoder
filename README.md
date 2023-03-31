@@ -1,6 +1,6 @@
 # Novel architecture for gated recurrent unit autoencoder trained on time series from electronic health records enables detection of ICU patient subgroups
-<!-- TODO: Link paper right here (at the top) once it's done -->
-<!-- TODO: Add a nice-looking cluster plot here, if one is available  -->
+
+_Read our paper at https://www.nature.com/articles/s41598-023-30986-1_
 
 ## Installation
 1. Clone this repository:
@@ -79,9 +79,12 @@ For submitting the resulting SLURM job under a different account name, set the e
 The search can also be run sequentially on a single computer by setting the `--interactive` switch.
 
 
-<!-- ## Citation -->
-<!-- TODO: Once repo is set to public, mention here that we submitted the paper for review -->
-<!-- TODO: Full citation for paper (once it is available), DOI link -->
+## Citation
+You can access the paper for this repository at https://www.nature.com/articles/s41598-023-30986-1.
+```
+Merkelbach, K., Schaper, S., Diedrich, C. et al. Novel architecture for gated recurrent unit autoencoder trained on time series from electronic health records enables detection of ICU patient subgroups. Sci Rep 13, 4053 (2023). https://doi.org/10.1038/s41598-023-30986-1
+```
+**DOI** https://doi.org/10.1038/s41598-023-30986-1
 
 
 ## Credit
