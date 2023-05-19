@@ -13,6 +13,7 @@ git clone git@github.com:JRC-COMBINE/ehr-time-series-gru-autoencoder.git
 pip install -r requirements.txt
 ```
 (this has been tested with Python 3.7.16)
+
 4. Get access to [MIMIC-III](https://mimic.mit.edu/docs/gettingstarted/).
 5. Set the environment variable `MIMIC_URL` to the URL of a MIMIC-III database (local or remote).
 6. (Optional) If you want to use the
