@@ -3368,7 +3368,7 @@ class Plotting:
                     )
 
     def plot_decision_tree_analysis(self, trained_tree: tree.DecisionTreeClassifier, tree_score: float,
-                                    tree_class_counts: Dict[int, int], nan_fill_value: np.float,
+                                    tree_class_counts: Dict[int, int], nan_fill_value: float,
                                     clustering_info: ClusteringInfo, feature_labels: List[str],
                                     data_selection_name: str, total_cluster_width=5):
         """

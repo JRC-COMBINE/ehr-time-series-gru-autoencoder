@@ -28,6 +28,10 @@ class DynModel:
                  l2_regularization=0.0):
         # ---- Set up data-dependent model settings ----
         self.dyn_width = len(prep.dyn_data_columns)  # Number of attributes of dynamic data
+        
+        print("self.dyn_width")
+        print(self.dyn_width)       
+        
         if prep.use_positional_encoding:
             self.dyn_width += prep.positional_encoding_dims
 
@@ -37,11 +41,17 @@ class DynModel:
             # (if using positional encodings, time column (e.g. 'charttime') is also present)
             self.time_dims += 1
         # The last self.time_dims features of the input are temporal features
+        
+        print("positional_encoding_dims")
+        print(prep.positional_encoding_dims)
+        
+        print("time_dims")
+        print(self.time_dims)
 
         # ---- Set up data-independent model settings ----
         if bottleneck_size is None:
             bottleneck_size = bottleneck_size_default
-        self.bottleneck_size = int(bottleneck_size)
+        self.bottleneck_size = int(bottleneck_size)        
         self.bottleneck_size += self.bottleneck_size % 2  # Make sure the bottleneck size is divisible by two
         self.dropout_rate = float(dropout_rate)
         self.activation = str(activation)
@@ -115,17 +125,32 @@ class DynModel:
             shape=(None, self.dyn_width),  # shape: (# of time steps, # of chart columns)
             name="dyn_charts_input"
         )
+        
+        
+        print("keras_backend.int_shape(charts_input)")
+        print(keras_backend.int_shape(charts_input))
 
         # Mask input since we want to batch multiple admissions with different sequence lengths
         charts_input_masked = Masking(mask_value=self.masking_value)(charts_input)
         # shape of charts_input_masked = (None, None, self.dyn_width) = (batch, steps, features)
 
+        print("keras_backend.int_shape(charts_input)")
+        print(keras_backend.int_shape(charts_input_masked))
+        
+        
         # Split timing info off from input
-        timing_info = charts_input_masked[:, :, -self.time_dims:]
-        charts_input_masked = charts_input_masked[:, :, :-self.time_dims]
+        timing_info = charts_input_masked[:, :, -self.time_dims:] ### time variables (1 time + n positional encodings)
+        charts_input_masked = charts_input_masked[:, :, :-self.time_dims] ### input variables 
 
+        print("keras_backend.int_shape(charts_input)")
+        print(keras_backend.int_shape(charts_input_masked))
+        
         # Determine target feature dimensions
         output_features = self.dyn_width
+        
+        print("output_features")
+        print(output_features)
+        
         if not self.reconstruct_times:
             output_features -= self.time_dims
 
@@ -219,21 +244,48 @@ class DynModel:
         # DECODER STARTS
 
         # For decoding, we first repeat the bottleneck along the time dimension
+        # Did not work, so taken another option from https://github.com/keras-team/keras/issues/7949
+        
         def extend_in_time(args):
             layer = args[0]
             time_layer = args[1]
-            return RepeatVector(keras_backend.shape(time_layer)[1])(layer)
+            
+            to_be_repeated = keras_backend.expand_dims(layer, axis=1)
+
+            # set the one matrix to shape [ batch_size , sequence_length_based on input, 1]
+            one_matrix = keras_backend.ones_like(time_layer[:,:,:1])
+
+            # do a mat mul
+            return keras_backend.batch_dot(one_matrix,to_be_repeated)
+            
+            
+            #print("layer")
+            #print(layer)
+            
+            #print("time_layer")
+            #print(time_layer)
+            
+            #print(keras_backend.int_shape(time_layer)[1])
+            #print(keras_backend.int_shape(time_layer)[2])
+            
+            #return RepeatVector(keras_backend.int_shape(time_layer)[1])(layer)
 
         bottleneck_repeated = Lambda(
             function=extend_in_time,
             output_shape=(None, int(bottleneck.shape[-1])),
             name="extend_in_time"
         )([bottleneck, charts_input_masked])
+        
+        print("bottleneck repeated shape")
+        print(keras_backend.int_shape(bottleneck_repeated))
         # bottleneck_repeated now has shape (None, None, self.bottleneck_size) = (batch, steps, features)
 
         # Add time information back onto bottleneck - otherwise, following decoder layers have no way of knowing which
         # point in time is to be reconstructed (this is because the input data does not have a fixed time grid)
         bottleneck_w_time = concatenate([bottleneck_repeated, timing_info])
+        
+        print("bottleneck w time shape")
+        print(keras_backend.int_shape(bottleneck_w_time))
 
         # The decoder consists of layers of RNNs that have more and more features
         # (Note that the linspace is cut by both its first and last entry since the RNN layers should start out having

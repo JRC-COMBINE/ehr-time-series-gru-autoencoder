@@ -939,7 +939,7 @@ class Evaluation:
         return analysis_results
 
     @staticmethod
-    def _nan_filling(feature_columns: List[List]) -> Tuple[List[List], np.float]:
+    def _nan_filling(feature_columns: List[List]) -> Tuple[List[List], float]:
         """
         Fills NaN values up with a different float value that is not present in the data. For usage with decision trees,
         which can not deal with NaN values.

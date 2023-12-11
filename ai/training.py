@@ -190,7 +190,7 @@ class Training:
     Training pipeline for neural network model.
     """
 
-    def __init__(self, iom, prep, max_epochs=5000, batch_size=4, loss='huber_loss', optimizer='Adam',
+    def __init__(self, iom, prep, max_epochs=24, batch_size=4, loss='huber_loss', optimizer='Adam',
                  learning_rate=0.00075, max_batch_len=0, early_stopping_patience=8, clip_grad_norm=True, baseline=False,
                  shuffle_admissions=False, no_training=False, additional_model_args=None):
 
@@ -329,7 +329,6 @@ class Training:
         # Masking: To put admissions with differing lengths into one batch, we need to mask the shorter admissions.
         # We do this using a value that does not occur in the data.
         self.masking_value = self.prep.masking_value
-
         # Training statistics
         self.training_start_time_utc = datetime.utcnow()
         self.training_end_time_utc = None
@@ -465,7 +464,7 @@ class Training:
 
         :return: Sequence with the batches as elements
         """
-
+    
         logging.info(f"Building batch sequence for {len(split_indices)} admissions ...")
 
         # Instantiate sequence
@@ -525,7 +524,9 @@ class Training:
         # Stack the admissions into a batch
         batch = np.stack(batch)
         # shape (batch_size, steps, features)
-
+        
+        
+        
         # Output is the same as input
         return batch
 
@@ -716,10 +717,11 @@ class Training:
         train_data_seq = self.sequence_model_data(
             split_indices=self._train_data_idxs
         )
+        
         val_data_seq = self.sequence_model_data(
             split_indices=self._val_data_idxs
         )
-
+        
         # Find out initial validation loss (with model in an untrained state)
         if self.training_state['epoch'] == 0:
             logging.info("Finding out validation loss before training (using the model's random initialization) ...")
@@ -779,7 +781,8 @@ class Training:
             dir=wandb_dir,
             project="dl-clus",
             config={k: clean_up_val(val) for (k, val) in self.pipeline_args.items()},
-            name=self.pipeline_args['id'] + "_" + random_id
+            name=self.pipeline_args['id'] + "_" + random_id,
+            mode="disabled"
         )
         callbacks.append(
             WandbCallback(

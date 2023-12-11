@@ -470,7 +470,7 @@ def train_opt_suggestion_model(observations):
     # Convert each column's data into a type suitable for a NN model
 
     def isnan(n):
-        return type(n) in [float, np.float, np.float64] and np.isnan(n)
+        return type(n) in [float, np.float64] and np.isnan(n)
 
     # Store string index mapping - we will later need it for handling concrete runs
     str_possible_vals = {}

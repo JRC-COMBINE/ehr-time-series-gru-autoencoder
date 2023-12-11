@@ -692,7 +692,7 @@ class Preprocessor:
             for data_frame in dfs:
                 values = data_frame[col_name].values
                 col_data_arrays.append(values)
-            columns_data = np.concatenate(col_data_arrays).astype(dtype=np.float).transpose()
+            columns_data = np.concatenate(col_data_arrays).astype(dtype=float).transpose()
             return columns_data
 
         def combine_tables(u: pd.DataFrame, v: pd.DataFrame) -> pd.DataFrame:

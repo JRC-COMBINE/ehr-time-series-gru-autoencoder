@@ -8,3 +8,4 @@ venv
 itcdb
 wandb
 icca_demo_dlclus.py
+.ipynb_checkpoints
